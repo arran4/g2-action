@@ -43,6 +43,16 @@ on:
         required: false
         default: true
         type: boolean
+      test_macos:
+        description: "Run tests on macOS"
+        required: false
+        default: false
+        type: boolean
+      test_windows:
+        description: "Run tests on Windows"
+        required: false
+        default: false
+        type: boolean
   schedule:
     - cron: '17 3 1 * *'
     - cron: '41 2 * * *'
@@ -69,6 +79,7 @@ jobs:
       run_release: ${{ steps.route.outputs.run_release }}
       is_monthly: ${{ steps.route.outputs.is_monthly }}
       is_nightly: ${{ steps.route.outputs.is_nightly }}
+      os_matrix: ${{ steps.route.outputs.os_matrix }}
     steps:
       - id: route
         shell: bash
@@ -81,6 +92,16 @@ jobs:
           run_release=false
           is_monthly=false
           is_nightly=false
+
+          os_matrix="[\"ubuntu-latest\""
+          if [[ "${{ github.event.inputs.test_macos }}" == "true" ]]; then
+            os_matrix="$os_matrix, \"macos-latest\""
+          fi
+          if [[ "${{ github.event.inputs.test_windows }}" == "true" ]]; then
+            os_matrix="$os_matrix, \"windows-latest\""
+          fi
+          os_matrix="$os_matrix]"
+          echo "os_matrix=$os_matrix" >> "$GITHUB_OUTPUT"
 
           case "${{ github.event_name }}" in
             push)
@@ -183,7 +204,7 @@ jobs:
     if: ${{ needs.route.outputs.run_code_checks == 'true' }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ fromJson(needs.route.outputs.os_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
