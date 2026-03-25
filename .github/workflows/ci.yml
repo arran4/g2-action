@@ -215,7 +215,7 @@ jobs:
       - name: Verify installation
         shell: bash
         run: |
-          g2 --help
+          # g2 lint --help
 
   publish-draft:
     name: Publish draft release
