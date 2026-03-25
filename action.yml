@@ -15,19 +15,19 @@ inputs:
     description: 'The action to run with g2.'
     required: false
     default: ''
-  install:
-    description: 'Whether to install g2.'
+  mode:
+    description: 'The execution mode: "install", "install and run", or "run".'
     required: false
-    default: 'true'
+    default: 'install'
 
 runs:
   using: 'composite'
   steps:
     - name: Run setup script
-      if: ${{ inputs.install == 'true' }}
+      if: ${{ inputs.mode == 'install' || inputs.mode == 'install and run' }}
       run: $GITHUB_ACTION_PATH/setup.sh "${{ inputs.version }}" "${{ inputs.github-token }}"
       shell: bash
     - name: Run g2 action
-      if: ${{ inputs.action != '' }}
+      if: ${{ inputs.mode == 'run' || inputs.mode == 'install and run' }}
       run: g2 ${{ inputs.action }}
       shell: bash

@@ -30,7 +30,7 @@ jobs:
           # Optional: specify an action
           action: 'lint .'
           # Optional: skip installation if already installed
-          install: 'false'
+          mode: 'run'
 ```
 
 ## Inputs
@@ -40,7 +40,7 @@ jobs:
 | `version` | The version of `g2` to install (e.g. `latest`, `v0.0.18`). | `latest` | No |
 | `github-token` | GitHub token to authenticate API requests to prevent rate limiting. | `${{ github.token }}` | No |
 | `action` | The action to run with `g2`. | `''` | No |
-| `install` | Whether to install `g2` or not. | `true` | No |
+| `mode` | The execution mode: `install`, `install and run`, or `run`. | `install` | No |
 
 ## License
 
