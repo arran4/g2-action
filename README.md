@@ -23,6 +23,14 @@ jobs:
       - name: Use g2
         run: |
           g2 lint .
+
+      - name: Use g2 Action
+        uses: arran4/g2-action@v1
+        with:
+          # Optional: specify an action
+          action: 'lint .'
+          # Optional: skip installation if already installed
+          install: 'false'
 ```
 
 ## Inputs
@@ -31,6 +39,8 @@ jobs:
 |---|---|---|---|
 | `version` | The version of `g2` to install (e.g. `latest`, `v0.0.18`). | `latest` | No |
 | `github-token` | GitHub token to authenticate API requests to prevent rate limiting. | `${{ github.token }}` | No |
+| `action` | The action to run with `g2`. | `''` | No |
+| `install` | Whether to install `g2` or not. | `true` | No |
 
 ## License
 

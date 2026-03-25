@@ -11,10 +11,23 @@ inputs:
     description: 'GitHub token to authenticate API requests to prevent rate limiting.'
     required: false
     default: ${{ github.token }}
+  action:
+    description: 'The action to run with g2.'
+    required: false
+    default: ''
+  install:
+    description: 'Whether to install g2.'
+    required: false
+    default: 'true'
 
 runs:
   using: 'composite'
   steps:
     - name: Run setup script
+      if: ${{ inputs.install == 'true' }}
       run: $GITHUB_ACTION_PATH/setup.sh "${{ inputs.version }}" "${{ inputs.github-token }}"
+      shell: bash
+    - name: Run g2 action
+      if: ${{ inputs.action != '' }}
+      run: g2 ${{ inputs.action }}
       shell: bash
