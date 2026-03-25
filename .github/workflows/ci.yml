@@ -261,3 +261,54 @@ jobs:
           else
             echo "Could not parse major version from $TAG"
           fi
+
+  update-readme:
+    name: Update README
+    needs: [route, update-major-tag]
+    if: ${{ needs.route.outputs.run_release == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update README with new tag
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          elif [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG=$(git describe --tags --abbrev=0)
+          fi
+          MAJOR_VERSION=$(echo "$TAG" | grep -oE '^v[0-9]+' || echo "")
+          if [ -n "$MAJOR_VERSION" ]; then
+            sed -i "s/uses: arran4\/g2-action@v[0-9\.]\+/uses: arran4\/g2-action@$MAJOR_VERSION/g" README.md
+
+            # Check if there are any changes
+            if git diff --exit-code README.md; then
+              echo "No changes to README.md"
+              exit 0
+            fi
+
+            # Set up git config
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+
+            BRANCH_NAME="update-readme-$TAG"
+            git checkout -b "$BRANCH_NAME"
+            git add README.md
+            git commit -m "docs: Update README to use $MAJOR_VERSION"
+            git push origin "$BRANCH_NAME"
+
+            # Create a Pull Request
+            gh pr create \
+              --title "docs: Update README to use $MAJOR_VERSION" \
+              --body "This is an automated PR to update the README to use the latest major version tag ($MAJOR_VERSION)." \
+              --base main \
+              --head "$BRANCH_NAME"
+          else
+            echo "Could not parse major version from $TAG"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
