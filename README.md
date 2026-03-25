@@ -25,7 +25,7 @@ jobs:
           g2 lint .
 
       - name: Use g2 Action
-        uses: arran4/g2-action@v1
+        uses: arran4/g2-action@v1.2
         with:
           # Optional: specify an action
           action: 'lint .'
