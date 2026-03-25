@@ -1,0 +1,234 @@
+# Agent rules for generation:
+# https://arran4.com/post/2026/006-Github-CI-and-Deploy/
+name: CI/CD
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+      - 'v*.*.*'
+      - 'v*.*.*-rc*'
+      - 'v*.*.*-beta*'
+      - 'test-*'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+    branches: [main, master]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Pipeline mode"
+        required: true
+        default: "lint-fix"
+        type: choice
+        options:
+          - lint-fix
+          - build
+          - release-major
+          - release-minor
+          - release-patch
+          - release-test
+          - release-rc
+          - release-alpha
+          - monthly-maintenance
+      release_version_override:
+        description: "Optional explicit release version (for example 2.4.0 or 2.4.0-rc.2)"
+        required: false
+        default: ""
+        type: string
+      allow_prs:
+        description: "Allow automation to open pull requests"
+        required: false
+        default: true
+        type: boolean
+  schedule:
+    - cron: '17 3 1 * *'
+    - cron: '41 2 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+  packages: write
+  security-events: write
+
+jobs:
+  route:
+    name: Route event
+    runs-on: ubuntu-latest
+    outputs:
+      run_code_checks: ${{ steps.route.outputs.run_code_checks }}
+      run_pr_meta_checks: ${{ steps.route.outputs.run_pr_meta_checks }}
+      run_cleanup: ${{ steps.route.outputs.run_cleanup }}
+      run_release: ${{ steps.route.outputs.run_release }}
+      is_monthly: ${{ steps.route.outputs.is_monthly }}
+      is_nightly: ${{ steps.route.outputs.is_nightly }}
+    steps:
+      - id: route
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          run_code_checks=false
+          run_pr_meta_checks=false
+          run_cleanup=false
+          run_release=false
+          is_monthly=false
+          is_nightly=false
+
+          case "${{ github.event_name }}" in
+            push)
+              run_code_checks=true
+              if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+                run_release=true
+              fi
+              ;;
+            pull_request)
+              if [[ "${{ github.event.action }}" == "closed" ]]; then
+                run_cleanup=true
+              else
+                run_pr_meta_checks=true
+                if [[ "${{ github.event.pull_request.head.repo.full_name || '' }}" != "${{ github.repository }}" ]]; then
+                  run_code_checks=true
+                fi
+              fi
+              ;;
+            release)
+              run_release=true
+              ;;
+            workflow_dispatch)
+              run_code_checks=true
+              if [[ "${{ inputs.mode }}" == release-* ]]; then
+                run_release=true
+              fi
+              if [[ "${{ inputs.mode }}" == "monthly-maintenance" ]]; then
+                is_monthly=true
+              fi
+              if [[ "${{ inputs.mode }}" == "lint-fix" ]]; then
+                is_nightly=true
+              fi
+              ;;
+            schedule)
+              run_code_checks=true
+              if [[ "${{ github.event.schedule }}" == "17 3 1 * *" ]]; then
+                is_monthly=true
+              fi
+              if [[ "${{ github.event.schedule }}" == "41 2 * * *" ]]; then
+                is_nightly=true
+              fi
+              ;;
+          esac
+
+          echo "run_code_checks=$run_code_checks" >> "$GITHUB_OUTPUT"
+          echo "run_pr_meta_checks=$run_pr_meta_checks" >> "$GITHUB_OUTPUT"
+          echo "run_cleanup=$run_cleanup" >> "$GITHUB_OUTPUT"
+          echo "run_release=$run_release" >> "$GITHUB_OUTPUT"
+          echo "is_monthly=$is_monthly" >> "$GITHUB_OUTPUT"
+          echo "is_nightly=$is_nightly" >> "$GITHUB_OUTPUT"
+
+  discover:
+    name: Discover capabilities and cost profile
+    needs: route
+    runs-on: ubuntu-latest
+    outputs:
+      profile: ${{ steps.profile.outputs.profile }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event.repository.private }}" == "true" ]]; then
+            echo "profile=private" >> "$GITHUB_OUTPUT"
+          else
+            echo "profile=public" >> "$GITHUB_OUTPUT"
+          fi
+
+  gitleaks:
+    name: Secret scan
+    needs: [route, discover]
+    if: ${{ needs.route.outputs.run_code_checks == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  shell-check:
+    name: ShellCheck
+    needs: [route, discover]
+    if: ${{ needs.route.outputs.run_code_checks == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: |
+          shopt -s globstar
+          shellcheck **/*.sh
+
+  test-action:
+    name: Test Action
+    needs: [route, discover]
+    if: ${{ needs.route.outputs.run_code_checks == 'true' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test local action
+        uses: ./
+        with:
+          version: 'latest'
+      - name: Verify installation
+        shell: bash
+        run: |
+          g2 --help
+
+  publish-draft:
+    name: Publish draft release
+    needs: [test-action]
+    if: ${{ needs.route.outputs.run_release == 'true' && (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish draft GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-major-tag:
+    name: Update Major Tag
+    needs: [test-action]
+    if: ${{ needs.route.outputs.run_release == 'true' && (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update major tag
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          MAJOR_VERSION=$(echo "$TAG" | grep -oE '^v[0-9]+' || echo "")
+          if [ -n "$MAJOR_VERSION" ]; then
+            echo "Updating tag $MAJOR_VERSION to point to $TAG"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -fa "$MAJOR_VERSION" -m "Update $MAJOR_VERSION tag to $TAG"
+            git push origin "$MAJOR_VERSION" --force
+          else
+            echo "Could not parse major version from $TAG"
+          fi
