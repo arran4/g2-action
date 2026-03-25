@@ -1,0 +1,20 @@
+name: 'Setup g2'
+description: 'Download and install g2 (Gentoo Tools by arran4)'
+author: 'arran4'
+
+inputs:
+  version:
+    description: 'The version of g2 to install (e.g. "latest", "v0.0.18").'
+    required: false
+    default: 'latest'
+  github-token:
+    description: 'GitHub token to authenticate API requests to prevent rate limiting.'
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run setup script
+      run: $GITHUB_ACTION_PATH/setup.sh "${{ inputs.version }}" "${{ inputs.github-token }}"
+      shell: bash
