@@ -2,6 +2,10 @@ name: 'Setup g2'
 description: 'Download and install g2 (Gentoo Tools by arran4)'
 author: 'arran4'
 
+branding:
+  icon: 'package'
+  color: 'blue'
+
 inputs:
   version:
     description: 'The version of g2 to install (e.g. "latest", "v0.0.18").'
