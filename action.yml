@@ -1,5 +1,5 @@
-name: 'Setup g2'
-description: 'Download and install g2 (Gentoo Tools by arran4)'
+name: 'Setup and run g2'
+description: 'Download, install and run g2 (Gentoo Tools by arran4)'
 author: 'arran4'
 
 branding:
