@@ -23,6 +23,10 @@ inputs:
     description: 'The execution mode: "install", "install and run", or "run".'
     required: false
     default: 'install'
+  git-clone-timeout:
+    description: 'The timeout for git clone operations.'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -33,5 +37,10 @@ runs:
       shell: bash
     - name: Run g2 action
       if: ${{ inputs.mode == 'run' || inputs.mode == 'install and run' }}
-      run: g2 ${{ inputs.action }}
+      run: |
+        if [ -n "${{ inputs.git-clone-timeout }}" ]; then
+          g2 ${{ inputs.action }} --git-clone-timeout="${{ inputs.git-clone-timeout }}"
+        else
+          g2 ${{ inputs.action }}
+        fi
       shell: bash
