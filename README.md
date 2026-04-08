@@ -44,6 +44,7 @@ jobs:
 | `action` | The action to run with `g2`. | `''` | No |
 | `mode` | The execution mode: `install`, `install and run`, or `run`. | `install` | No |
 | `git-clone-timeout` | The timeout for git clone operations. | `''` | No |
+| `max-mem` | The maximum memory to use. | `''` | No |
 
 ## License
 

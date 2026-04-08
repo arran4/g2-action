@@ -27,6 +27,10 @@ inputs:
     description: 'The timeout for git clone operations.'
     required: false
     default: ''
+  max-mem:
+    description: 'The maximum memory to use.'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -38,8 +42,16 @@ runs:
     - name: Run g2 action
       if: ${{ inputs.mode == 'run' || inputs.mode == 'install and run' }}
       run: |
+        G2_ARGS=()
         if [ -n "${{ inputs.git-clone-timeout }}" ]; then
-          g2 ${{ inputs.action }} --git-clone-timeout="${{ inputs.git-clone-timeout }}"
+          G2_ARGS+=("--git-clone-timeout=${{ inputs.git-clone-timeout }}")
+        fi
+        if [ -n "${{ inputs.max-mem }}" ]; then
+          G2_ARGS+=("--max-mem=${{ inputs.max-mem }}")
+        fi
+
+        if [ ${#G2_ARGS[@]} -gt 0 ]; then
+          g2 ${{ inputs.action }} "${G2_ARGS[@]}"
         else
           g2 ${{ inputs.action }}
         fi
