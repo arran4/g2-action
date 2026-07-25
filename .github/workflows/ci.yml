@@ -219,14 +219,29 @@ jobs:
 
   publish-draft:
     name: Publish draft release
-    needs: [test-action]
+    needs: [route, test-action]
     if: ${{ needs.route.outputs.run_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get tag
+        id: get_tag
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          elif [[ "${{ github.event_name }}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG=$(git describe --tags --abbrev=0)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       - name: Publish draft GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.get_tag.outputs.tag }}
           draft: true
           generate_release_notes: true
         env:
@@ -234,7 +249,7 @@ jobs:
 
   update-major-tag:
     name: Update Major Tag
-    needs: [test-action, publish-draft]
+    needs: [route, test-action, publish-draft]
     if: ${{ needs.route.outputs.run_release == 'true' }}
     runs-on: ubuntu-latest
     steps:
