@@ -27,6 +27,10 @@ inputs:
     description: 'The timeout for git clone operations.'
     required: false
     default: ''
+  format:
+    description: 'The output format (e.g. "github-actions").'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -38,9 +42,12 @@ runs:
     - name: Run g2 action
       if: ${{ inputs.mode == 'run' || inputs.mode == 'install and run' }}
       run: |
+        G2_ARGS=()
         if [ -n "${{ inputs.git-clone-timeout }}" ]; then
-          g2 ${{ inputs.action }} --git-clone-timeout="${{ inputs.git-clone-timeout }}"
-        else
-          g2 ${{ inputs.action }}
+          G2_ARGS+=("--git-clone-timeout=${{ inputs.git-clone-timeout }}")
         fi
+        if [ -n "${{ inputs.format }}" ]; then
+          G2_ARGS+=("--format=${{ inputs.format }}")
+        fi
+        g2 ${{ inputs.action }} "${G2_ARGS[@]}"
       shell: bash

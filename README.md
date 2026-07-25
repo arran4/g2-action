@@ -33,6 +33,8 @@ jobs:
           mode: 'run'
           # Optional: specify a timeout for git clone operations
           git-clone-timeout: '10m'
+          # Optional: specify output format
+          format: 'github-actions'
 ```
 
 ## Inputs
@@ -44,6 +46,7 @@ jobs:
 | `action` | The action to run with `g2`. | `''` | No |
 | `mode` | The execution mode: `install`, `install and run`, or `run`. | `install` | No |
 | `git-clone-timeout` | The timeout for git clone operations. | `''` | No |
+| `format` | The output format (e.g. `github-actions`). | `''` | No |
 
 ## License
 
