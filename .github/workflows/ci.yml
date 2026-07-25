@@ -314,14 +314,14 @@ jobs:
             git checkout -b "$BRANCH_NAME"
             git add README.md
             git commit -m "docs: Update README to use $MAJOR_VERSION"
-            git push origin "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME" --force
 
             # Create a Pull Request
             gh pr create \
               --title "docs: Update README to use $MAJOR_VERSION" \
               --body "This is an automated PR to update the README to use the latest major version tag ($MAJOR_VERSION)." \
               --base main \
-              --head "$BRANCH_NAME"
+              --head "$BRANCH_NAME" || true
           else
             echo "Could not parse major version from $TAG"
           fi
