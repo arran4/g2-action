@@ -8,9 +8,13 @@ branding:
 
 inputs:
   version:
-    description: 'The version of g2 to install (e.g. "latest", "v0.0.18").'
+    description: 'g2 release (latest or a v* version), branch, or commit SHA to install.'
     required: false
     default: 'latest'
+  source-ref:
+    description: 'Explicit g2 git ref or commit SHA to build. Overrides version; useful for tag-like branch names.'
+    required: false
+    default: ''
   github-token:
     description: 'GitHub token to authenticate API requests to prevent rate limiting.'
     required: false
@@ -35,10 +39,34 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Run setup script
+    - name: Resolve g2 installation source
+      id: source
       if: ${{ inputs.mode == 'install' || inputs.mode == 'install and run' }}
-      run: bash $GITHUB_ACTION_PATH/setup.sh "${{ inputs.version }}" "${{ inputs.github-token }}"
       shell: bash
+      env:
+        G2_VERSION: ${{ inputs.version }}
+        G2_SOURCE_REF: ${{ inputs.source-ref }}
+      run: bash "$GITHUB_ACTION_PATH/resolve-install.sh"
+    - name: Set up Go for source build
+      if: ${{ steps.source.outputs.from_source == 'true' }}
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: ${{ steps.source.outputs.source_dir }}/go.mod
+        cache: false
+    - name: Build and install g2 from source
+      if: ${{ steps.source.outputs.from_source == 'true' }}
+      shell: bash
+      env:
+        G2_SOURCE_DIR: ${{ steps.source.outputs.source_dir }}
+        G2_SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
+      run: bash "$GITHUB_ACTION_PATH/build-source.sh"
+    - name: Install g2 from release
+      if: ${{ steps.source.outputs.from_source == 'false' }}
+      shell: bash
+      env:
+        G2_VERSION: ${{ inputs.version }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: bash "$GITHUB_ACTION_PATH/setup.sh" "$G2_VERSION" "$GITHUB_TOKEN"
     - name: Run g2 action
       if: ${{ inputs.mode == 'run' || inputs.mode == 'install and run' }}
       run: |
