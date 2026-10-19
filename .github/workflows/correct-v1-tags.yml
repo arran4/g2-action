@@ -51,7 +51,11 @@ jobs:
 
           # An existing versioned release must never be silently overwritten.
           ref_api="repos/$GITHUB_REPOSITORY/git/ref/tags"
-          existing_version=$(gh api "$ref_api/v1.3" --jq '.object.sha' 2>/dev/null || true)
+          if gh api "$ref_api/v1.3" > /tmp/g2-action-v1.3-ref.json 2>/dev/null; then
+            existing_version=$(jq -r '.object.sha' /tmp/g2-action-v1.3-ref.json)
+          else
+            existing_version=""
+          fi
           if [[ -n "$existing_version" && "$existing_version" != "$TARGET_SHA" ]]; then
             echo "::error::v1.3 exists at unexpected SHA $existing_version"
             exit 1
