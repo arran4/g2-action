@@ -217,6 +217,28 @@ jobs:
         run: |
           # g2 lint --help
 
+  source-ref-smoke:
+    name: Smoke test source-ref installation
+    # Same-repository PRs skip the general code matrix; still verify this
+    # action's new source-build path before it is released to consumers.
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release selector stays on binary path
+        shell: bash
+        run: |
+          output=$(mktemp)
+          GITHUB_OUTPUT="$output" G2_VERSION=v0.0.103 bash ./resolve-install.sh
+          grep -Fx 'from_source=false' "$output"
+      - name: Install g2 from main branch
+        uses: ./
+        with:
+          version: 'main'
+      - name: Verify source binary
+        shell: bash
+        run: g2 lint --help
+
   publish-draft:
     name: Publish draft release
     needs: [route, test-action]
