@@ -10,8 +10,11 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
+body_file=$(mktemp)
+trap 'rm -f "$body_file"' EXIT
+
 curl_args=(--silent --show-error --location --retry 3 --retry-max-time 45
-  --connect-timeout 10 --max-time 20 --write-out '\n%{http_code}'
+  --connect-timeout 10 --max-time 20 --output "$body_file" --write-out '%{http_code}'
   --header 'Accept: application/vnd.github+json')
 if [[ -n "$token" ]]; then
   curl_args+=(--header "Authorization: Bearer $token")
@@ -20,9 +23,8 @@ fi
 # Keep the response body and status separate without dumping either credentials
 # or the complete response into the Actions log. curl retries transient statuses
 # (including 429 and 5xx) and honors Retry-After where supported.
-if response=$(curl "${curl_args[@]}" "$api_url"); then
-  status=${response##*$'\n'}
-  body=${response%$'\n'*}
+if status=$(curl "${curl_args[@]}" "$api_url"); then
+  body=$(cat "$body_file")
 else
   rc=$?
   echo "Error: GitHub release metadata request failed (curl exit $rc)." >&2
