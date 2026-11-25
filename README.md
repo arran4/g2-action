@@ -46,6 +46,7 @@ The action also supports installing and executing g2 in one step:
 ## Release versions and source refs
 
 - `version: latest` (the default) downloads the latest **published** GitHub release.
+- Binary installation requires Bash, curl and jq (available on GitHub-hosted runners), plus the existing archive extraction tools. Release lookup and downloads retry transient HTTP failures within bounded retry windows. Persistent API errors report their HTTP status rather than a misleading missing-tag error.
 - `version: v0.0.104` (or another `v*` version tag) downloads that release's binary.
 - `version: main`, `version: feature/my-fix`, `version: refs/pull/583/head`, or `version: <commit-sha>` fetches and compiles that g2 source ref.
 - `source-ref` explicitly selects a source ref and takes precedence over `version`. Use it for a branch that resembles a release tag, or to make source builds explicit.
