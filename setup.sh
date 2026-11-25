@@ -35,27 +35,7 @@ fi
 
 echo "Fetching release info from: $API_URL"
 
-CURL_ARGS=(-sL)
-if [ -n "$GITHUB_TOKEN" ]; then
-  CURL_ARGS+=(-H "Authorization: Bearer $GITHUB_TOKEN")
-fi
-
-# Use curl to get release JSON
-RELEASE_JSON=$(curl "${CURL_ARGS[@]}" "$API_URL")
-
-# Basic check for Not Found
-if echo "$RELEASE_JSON" | grep -q '"message": "Not Found"'; then
-  echo "Error: Release not found. Please check the version."
-  exit 1
-fi
-
-# Extract tag_name using grep to avoid perl regex if grep doesn't support -P everywhere
-TAG_NAME=$(echo "$RELEASE_JSON" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"tag_name": "([^"]+)".*/\1/')
-
-if [ -z "$TAG_NAME" ]; then
-  echo "Error: Could not parse tag_name from release info."
-  exit 1
-fi
+TAG_NAME=$(bash "$(dirname "${BASH_SOURCE[0]}")/release-info.sh" "$API_URL" "$GITHUB_TOKEN")
 
 echo "Found release tag: $TAG_NAME"
 
@@ -75,7 +55,7 @@ TEMP_DIR=$(mktemp -d)
 cd "$TEMP_DIR"
 
 # Download the file
-curl -sL -f -o "$FILENAME" "$DOWNLOAD_URL" || {
+curl --silent --show-error --location --fail --retry 3 --retry-max-time 45 --connect-timeout 10 --max-time 120 -o "$FILENAME" "$DOWNLOAD_URL" || {
   echo "Error: Failed to download $DOWNLOAD_URL"
   exit 1
 }

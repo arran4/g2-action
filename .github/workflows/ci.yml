@@ -208,6 +208,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Test release metadata error handling
+        shell: bash
+        run: bash tests/release-info.sh
       - name: Test local action
         uses: ./
         with:
@@ -215,7 +218,7 @@ jobs:
       - name: Verify installation
         shell: bash
         run: |
-          # g2 lint --help
+          g2 lint --help
 
   source-ref-smoke:
     name: Smoke test source-ref installation
@@ -225,6 +228,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test release metadata error handling
+        shell: bash
+        run: bash tests/release-info.sh
       - name: Verify release selector stays on binary path
         shell: bash
         run: |
