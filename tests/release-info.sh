@@ -12,7 +12,15 @@ printf '%s\n' "$@" > "$MOCK_ARGS"
 if [[ "${MOCK_EXIT:-0}" != 0 ]]; then
   exit "$MOCK_EXIT"
 fi
-printf '%s\n%s' "$MOCK_BODY" "$MOCK_STATUS"
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == --output ]]; then
+    printf '%s' "$MOCK_BODY" > "$2"
+    printf '%s' "$MOCK_STATUS"
+    exit 0
+  fi
+  shift
+done
+exit 99
 MOCK
 chmod +x "$tmp/curl"
 url=https://api.github.com/repos/arran4/g2/releases/latest
@@ -23,7 +31,7 @@ export MOCK_STATUS=200 MOCK_BODY='{"tag_name":"v0.0.108","name":"example"}'
 [[ $(run) == v0.0.108 ]]
 grep -Fx -- '--retry' "$MOCK_ARGS"
 grep -Fx -- '--retry-max-time' "$MOCK_ARGS"
-! grep -F -- 'Authorization:' "$MOCK_ARGS"
+if grep -F -- 'Authorization:' "$MOCK_ARGS"; then exit 1; fi
 [[ $(run test-token) == v0.0.108 ]]
 grep -Fx -- 'Authorization: Bearer test-token' "$MOCK_ARGS"
 export MOCK_BODY=$'{\n  "tag_name" : "v0.0.107"\n}'
@@ -37,7 +45,7 @@ expect_failure() {
   fi
   [[ ! -s "$tmp/out" ]]
   grep -F -- "$expected" "$tmp/err"
-  ! grep -F -- 'test-token' "$tmp/err"
+  if grep -F -- 'test-token' "$tmp/err"; then exit 1; fi
 }
 
 export MOCK_STATUS=403 MOCK_BODY='{"message":"API rate limit exceeded"}'
